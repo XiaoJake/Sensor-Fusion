@@ -24,11 +24,12 @@
 #include "lidar_localization/models/registration/icp_registration.hpp"
 #include "lidar_localization/models/registration/ndt_registration.hpp"
 #include "lidar_localization/models/registration/icp_svd_registration.hpp"
+#include "lidar_localization/models/registration/icp_gn_registration.hpp"
 
 namespace lidar_localization {
 class FrontEnd {
   public:
-    struct Frame { 
+    struct Frame {
         Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
         CloudData cloud_data;
     };
@@ -58,7 +59,7 @@ class FrontEnd {
     std::shared_ptr<CloudFilterInterface> frame_filter_ptr_;
     std::shared_ptr<CloudFilterInterface> local_map_filter_ptr_;
     std::shared_ptr<CloudFilterInterface> display_filter_ptr_;
-    std::shared_ptr<RegistrationInterface> registration_ptr_; 
+    std::shared_ptr<RegistrationInterface> registration_ptr_;
 
     std::deque<Frame> local_map_frames_;
     std::deque<Frame> global_map_frames_;

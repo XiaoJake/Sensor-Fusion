@@ -13,9 +13,10 @@
 #include <vector>
 #include "Constants.hpp"
 
-namespace GeographicLib {
+namespace GeographicLib
+{
 
-  /**
+/**
    * \brief %Geocentric coordinates
    *
    * Convert between geodetic coordinates latitude = \e lat, longitude = \e
@@ -64,44 +65,46 @@ namespace GeographicLib {
    * providing access to the functionality of Geocentric and LocalCartesian.
    **********************************************************************/
 
-  class GEOGRAPHICLIB_EXPORT Geocentric {
-  private:
-    typedef Math::real real;
-    friend class LocalCartesian;
-    friend class MagneticCircle; // MagneticCircle uses Rotation
-    friend class MagneticModel;  // MagneticModel uses IntForward
-    friend class GravityCircle;  // GravityCircle uses Rotation
-    friend class GravityModel;   // GravityModel uses IntForward
-    friend class NormalGravity;  // NormalGravity uses IntForward
-    static const size_t dim_ = 3;
-    static const size_t dim2_ = dim_ * dim_;
-    real _a, _f, _e2, _e2m, _e2a, _e4a, _maxrad;
-    static void Rotation(real sphi, real cphi, real slam, real clam,
-                         real M[dim2_]);
-    static void Rotate(real M[dim2_], real x, real y, real z,
-                       real& X, real& Y, real& Z) {
-      // Perform [X,Y,Z]^t = M.[x,y,z]^t
-      // (typically local cartesian to geocentric)
-      X = M[0] * x + M[1] * y + M[2] * z;
-      Y = M[3] * x + M[4] * y + M[5] * z;
-      Z = M[6] * x + M[7] * y + M[8] * z;
-    }
-    static void Unrotate(real M[dim2_], real X, real Y, real Z,
-                         real& x, real& y, real& z)  {
-      // Perform [x,y,z]^t = M^t.[X,Y,Z]^t
-      // (typically geocentric to local cartesian)
-      x = M[0] * X + M[3] * Y + M[6] * Z;
-      y = M[1] * X + M[4] * Y + M[7] * Z;
-      z = M[2] * X + M[5] * Y + M[8] * Z;
-    }
-    void IntForward(real lat, real lon, real h, real& X, real& Y, real& Z,
-                    real M[dim2_]) const;
-    void IntReverse(real X, real Y, real Z, real& lat, real& lon, real& h,
-                    real M[dim2_]) const;
+class GEOGRAPHICLIB_EXPORT Geocentric
+{
+private:
+  typedef Math::real real;
+  friend class LocalCartesian;
+  friend class MagneticCircle; // MagneticCircle uses Rotation
+  friend class MagneticModel;  // MagneticModel uses IntForward
+  friend class GravityCircle;  // GravityCircle uses Rotation
+  friend class GravityModel;   // GravityModel uses IntForward
+  friend class NormalGravity;  // NormalGravity uses IntForward
+  static const size_t dim_ = 3;
+  static const size_t dim2_ = dim_ * dim_;
+  real _a, _f, _e2, _e2m, _e2a, _e4a, _maxrad;
+  static void Rotation(real sphi, real cphi, real slam, real clam,
+                       real M[dim2_]);
+  static void Rotate(real M[dim2_], real x, real y, real z,
+                     real &X, real &Y, real &Z)
+  {
+    // Perform [X,Y,Z]^t = M.[x,y,z]^t
+    // (typically local cartesian to geocentric)
+    X = M[0] * x + M[1] * y + M[2] * z;
+    Y = M[3] * x + M[4] * y + M[5] * z;
+    Z = M[6] * x + M[7] * y + M[8] * z;
+  }
+  static void Unrotate(real M[dim2_], real X, real Y, real Z,
+                       real &x, real &y, real &z)
+  {
+    // Perform [x,y,z]^t = M^t.[X,Y,Z]^t
+    // (typically geocentric to local cartesian)
+    x = M[0] * X + M[3] * Y + M[6] * Z;
+    y = M[1] * X + M[4] * Y + M[7] * Z;
+    z = M[2] * X + M[5] * Y + M[8] * Z;
+  }
+  void IntForward(real lat, real lon, real h, real &X, real &Y, real &Z,
+                  real M[dim2_]) const;
+  void IntReverse(real X, real Y, real Z, real &lat, real &lon, real &h,
+                  real M[dim2_]) const;
 
-  public:
-
-    /**
+public:
+  /**
      * Constructor for a ellipsoid with
      *
      * @param[in] a equatorial radius (meters).
@@ -110,14 +113,14 @@ namespace GeographicLib {
      * @exception GeographicErr if \e a or (1 &minus; \e f) \e a is not
      *   positive.
      **********************************************************************/
-    Geocentric(real a, real f);
+  Geocentric(real a, real f);
 
-    /**
+  /**
      * A default constructor (for use by NormalGravity).
      **********************************************************************/
-    Geocentric() : _a(-1) {}
+  Geocentric() : _a(-1) {}
 
-    /**
+  /**
      * Convert from geodetic to geocentric coordinates.
      *
      * @param[in] lat latitude of point (degrees).
@@ -129,13 +132,14 @@ namespace GeographicLib {
      *
      * \e lat should be in the range [&minus;90&deg;, 90&deg;].
      **********************************************************************/
-    void Forward(real lat, real lon, real h, real& X, real& Y, real& Z)
-      const {
-      if (Init())
-        IntForward(lat, lon, h, X, Y, Z, NULL);
-    }
+  void Forward(real lat, real lon, real h, real &X, real &Y, real &Z)
+      const
+  {
+    if (Init())
+      IntForward(lat, lon, h, X, Y, Z, NULL);
+  }
 
-    /**
+  /**
      * Convert from geodetic to geocentric coordinates and return rotation
      * matrix.
      *
@@ -158,20 +162,23 @@ namespace GeographicLib {
      * .
      * Then we have \e v0 = \e M &sdot; \e v1.
      **********************************************************************/
-    void Forward(real lat, real lon, real h, real& X, real& Y, real& Z,
-                 std::vector<real>& M)
-      const {
-      if (!Init())
-        return;
-      if (M.end() == M.begin() + dim2_) {
-        real t[dim2_];
-        IntForward(lat, lon, h, X, Y, Z, t);
-        std::copy(t, t + dim2_, M.begin());
-      } else
-        IntForward(lat, lon, h, X, Y, Z, NULL);
+  void Forward(real lat, real lon, real h, real &X, real &Y, real &Z,
+               std::vector<real> &M)
+      const
+  {
+    if (!Init())
+      return;
+    if (M.end() == M.begin() + dim2_)
+    {
+      real t[dim2_];
+      IntForward(lat, lon, h, X, Y, Z, t);
+      std::copy(t, t + dim2_, M.begin());
     }
+    else
+      IntForward(lat, lon, h, X, Y, Z, NULL);
+  }
 
-    /**
+  /**
      * Convert from geocentric to geodetic to coordinates.
      *
      * @param[in] X geocentric coordinate (meters).
@@ -191,13 +198,14 @@ namespace GeographicLib {
      * sin<sup>2</sup>\e lat).  The value of \e lon returned is in the range
      * [&minus;180&deg;, 180&deg;].
      **********************************************************************/
-    void Reverse(real X, real Y, real Z, real& lat, real& lon, real& h)
-      const {
-      if (Init())
-        IntReverse(X, Y, Z, lat, lon, h, NULL);
-    }
+  void Reverse(real X, real Y, real Z, real &lat, real &lon, real &h)
+      const
+  {
+    if (Init())
+      IntReverse(X, Y, Z, lat, lon, h, NULL);
+  }
 
-    /**
+  /**
      * Convert from geocentric to geodetic to coordinates.
      *
      * @param[in] X geocentric coordinate (meters).
@@ -220,48 +228,55 @@ namespace GeographicLib {
      * Then we have \e v1 = <i>M</i><sup>T</sup> &sdot; \e v0, where
      * <i>M</i><sup>T</sup> is the transpose of \e M.
      **********************************************************************/
-    void Reverse(real X, real Y, real Z, real& lat, real& lon, real& h,
-                 std::vector<real>& M)
-      const {
-      if (!Init())
-        return;
-      if (M.end() == M.begin() + dim2_) {
-        real t[dim2_];
-        IntReverse(X, Y, Z, lat, lon, h, t);
-        std::copy(t, t + dim2_, M.begin());
-      } else
-        IntReverse(X, Y, Z, lat, lon, h, NULL);
+  void Reverse(real X, real Y, real Z, real &lat, real &lon, real &h,
+               std::vector<real> &M)
+      const
+  {
+    if (!Init())
+      return;
+    if (M.end() == M.begin() + dim2_)
+    {
+      real t[dim2_];
+      IntReverse(X, Y, Z, lat, lon, h, t);
+      std::copy(t, t + dim2_, M.begin());
     }
+    else
+      IntReverse(X, Y, Z, lat, lon, h, NULL);
+  }
 
-    /** \name Inspector functions
+  /** \name Inspector functions
      **********************************************************************/
-    ///@{
-    /**
+  ///@{
+  /**
      * @return true if the object has been initialized.
      **********************************************************************/
-    bool Init() const { return _a > 0; }
-    /**
+  bool Init() const { return _a > 0; }
+  /**
      * @return \e a the equatorial radius of the ellipsoid (meters).  This is
      *   the value used in the constructor.
      **********************************************************************/
-    Math::real MajorRadius() const
-    { return Init() ? _a : Math::NaN(); }
+  Math::real MajorRadius() const
+  {
+    return Init() ? _a : Math::NaN();
+  }
 
-    /**
+  /**
      * @return \e f the  flattening of the ellipsoid.  This is the
      *   value used in the constructor.
      **********************************************************************/
-    Math::real Flattening() const
-    { return Init() ? _f : Math::NaN(); }
-    ///@}
+  Math::real Flattening() const
+  {
+    return Init() ? _f : Math::NaN();
+  }
+  ///@}
 
-    /**
+  /**
      * A global instantiation of Geocentric with the parameters for the WGS84
      * ellipsoid.
      **********************************************************************/
-    static const Geocentric& WGS84();
-  };
+  static const Geocentric &WGS84();
+};
 
 } // namespace GeographicLib
 
-#endif  // GEOGRAPHICLIB_GEOCENTRIC_HPP
+#endif // GEOGRAPHICLIB_GEOCENTRIC_HPP

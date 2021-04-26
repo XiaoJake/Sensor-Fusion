@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   eigen_conversions
-  message_generation 
+  message_generation
   std_srvs
 )
 
@@ -34,6 +34,7 @@ include(cmake/glog.cmake)
 include(cmake/YAML.cmake)
 include(cmake/PCL.cmake)
 include(cmake/eigen.cmake)
+include(cmake/sophus.cmake)
 include(cmake/geographic.cmake)
 
 include_directories(include ${catkin_INCLUDE_DIRS})
@@ -70,14 +71,14 @@ target_link_libraries(front_end_node ${catkin_LIBRARIES} ${ALL_TARGET_LIBRARIES}
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-install(TARGETS 
+install(TARGETS
         test_frame_node
         front_end_node
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark cpp header files for installation
-install(DIRECTORY 
+install(DIRECTORY
         include/
     DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
     FILES_MATCHING PATTERN "*.h"

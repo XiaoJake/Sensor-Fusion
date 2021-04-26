@@ -13,9 +13,10 @@
 #include "Geocentric.hpp"
 #include "Constants.hpp"
 
-namespace GeographicLib {
+namespace GeographicLib
+{
 
-  /**
+/**
    * \brief Local cartesian coordinates
    *
    * Convert between geodetic coordinates latitude = \e lat, longitude = \e
@@ -35,22 +36,23 @@ namespace GeographicLib {
    * providing access to the functionality of Geocentric and LocalCartesian.
    **********************************************************************/
 
-  class GEOGRAPHICLIB_EXPORT LocalCartesian {
-  private:
-    typedef Math::real real;
-    static const size_t dim_ = 3;
-    static const size_t dim2_ = dim_ * dim_;
-    Geocentric _earth;
-    real _lat0, _lon0, _h0;
-    real _x0, _y0, _z0, _r[dim2_];
-    void IntForward(real lat, real lon, real h, real& x, real& y, real& z,
-                    real M[dim2_]) const;
-    void IntReverse(real x, real y, real z, real& lat, real& lon, real& h,
-                    real M[dim2_]) const;
-    void MatrixMultiply(real M[dim2_]) const;
-  public:
+class GEOGRAPHICLIB_EXPORT LocalCartesian
+{
+private:
+  typedef Math::real real;
+  static const size_t dim_ = 3;
+  static const size_t dim2_ = dim_ * dim_;
+  Geocentric _earth;
+  real _lat0, _lon0, _h0;
+  real _x0, _y0, _z0, _r[dim2_];
+  void IntForward(real lat, real lon, real h, real &x, real &y, real &z,
+                  real M[dim2_]) const;
+  void IntReverse(real x, real y, real z, real &lat, real &lon, real &h,
+                  real M[dim2_]) const;
+  void MatrixMultiply(real M[dim2_]) const;
 
-    /**
+public:
+  /**
      * Constructor setting the origin.
      *
      * @param[in] lat0 latitude at origin (degrees).
@@ -61,12 +63,14 @@ namespace GeographicLib {
      *
      * \e lat0 should be in the range [&minus;90&deg;, 90&deg;].
      **********************************************************************/
-    LocalCartesian(real lat0, real lon0, real h0 = 0,
-                   const Geocentric& earth = Geocentric::WGS84())
+  LocalCartesian(real lat0, real lon0, real h0 = 0,
+                 const Geocentric &earth = Geocentric::WGS84())
       : _earth(earth)
-    { Reset(lat0, lon0, h0); }
+  {
+    Reset(lat0, lon0, h0);
+  }
 
-    /**
+  /**
      * Default constructor.
      *
      * @param[in] earth Geocentric object for the transformation; default
@@ -74,11 +78,13 @@ namespace GeographicLib {
      *
      * Sets \e lat0 = 0, \e lon0 = 0, \e h0 = 0.
      **********************************************************************/
-    explicit LocalCartesian(const Geocentric& earth = Geocentric::WGS84())
+  explicit LocalCartesian(const Geocentric &earth = Geocentric::WGS84())
       : _earth(earth)
-    { Reset(real(0), real(0), real(0)); }
+  {
+    Reset(real(0), real(0), real(0));
+  }
 
-    /**
+  /**
      * Reset the origin.
      *
      * @param[in] lat0 latitude at origin (degrees).
@@ -87,9 +93,9 @@ namespace GeographicLib {
      *
      * \e lat0 should be in the range [&minus;90&deg;, 90&deg;].
      **********************************************************************/
-    void Reset(real lat0, real lon0, real h0 = 0);
+  void Reset(real lat0, real lon0, real h0 = 0);
 
-    /**
+  /**
      * Convert from geodetic to local cartesian coordinates.
      *
      * @param[in] lat latitude of point (degrees).
@@ -101,12 +107,13 @@ namespace GeographicLib {
      *
      * \e lat should be in the range [&minus;90&deg;, 90&deg;].
      **********************************************************************/
-    void Forward(real lat, real lon, real h, real& x, real& y, real& z)
-      const {
-      IntForward(lat, lon, h, x, y, z, NULL);
-    }
+  void Forward(real lat, real lon, real h, real &x, real &y, real &z)
+      const
+  {
+    IntForward(lat, lon, h, x, y, z, NULL);
+  }
 
-    /**
+  /**
      * Convert from geodetic to local cartesian coordinates and return rotation
      * matrix.
      *
@@ -132,18 +139,21 @@ namespace GeographicLib {
      * .
      * Then we have \e v0 = \e M &sdot; \e v1.
      **********************************************************************/
-    void Forward(real lat, real lon, real h, real& x, real& y, real& z,
-                 std::vector<real>& M)
-      const  {
-      if (M.end() == M.begin() + dim2_) {
-        real t[dim2_];
-        IntForward(lat, lon, h, x, y, z, t);
-        std::copy(t, t + dim2_, M.begin());
-      } else
-        IntForward(lat, lon, h, x, y, z, NULL);
+  void Forward(real lat, real lon, real h, real &x, real &y, real &z,
+               std::vector<real> &M)
+      const
+  {
+    if (M.end() == M.begin() + dim2_)
+    {
+      real t[dim2_];
+      IntForward(lat, lon, h, x, y, z, t);
+      std::copy(t, t + dim2_, M.begin());
     }
+    else
+      IntForward(lat, lon, h, x, y, z, NULL);
+  }
 
-    /**
+  /**
      * Convert from local cartesian to geodetic coordinates.
      *
      * @param[in] x local cartesian coordinate (meters).
@@ -156,12 +166,13 @@ namespace GeographicLib {
      * The value of \e lon returned is in the range [&minus;180&deg;,
      * 180&deg;].
      **********************************************************************/
-    void Reverse(real x, real y, real z, real& lat, real& lon, real& h)
-      const {
-      IntReverse(x, y, z, lat, lon, h, NULL);
-    }
+  void Reverse(real x, real y, real z, real &lat, real &lon, real &h)
+      const
+  {
+    IntReverse(x, y, z, lat, lon, h, NULL);
+  }
 
-    /**
+  /**
      * Convert from local cartesian to geodetic coordinates and return rotation
      * matrix.
      *
@@ -186,51 +197,53 @@ namespace GeographicLib {
      * Then we have \e v1 = <i>M</i><sup>T</sup> &sdot; \e v0, where
      * <i>M</i><sup>T</sup> is the transpose of \e M.
      **********************************************************************/
-    void Reverse(real x, real y, real z, real& lat, real& lon, real& h,
-                 std::vector<real>& M)
-      const {
-      if (M.end() == M.begin() + dim2_) {
-        real t[dim2_];
-        IntReverse(x, y, z, lat, lon, h, t);
-        std::copy(t, t + dim2_, M.begin());
-      } else
-        IntReverse(x, y, z, lat, lon, h, NULL);
+  void Reverse(real x, real y, real z, real &lat, real &lon, real &h,
+               std::vector<real> &M)
+      const
+  {
+    if (M.end() == M.begin() + dim2_)
+    {
+      real t[dim2_];
+      IntReverse(x, y, z, lat, lon, h, t);
+      std::copy(t, t + dim2_, M.begin());
     }
+    else
+      IntReverse(x, y, z, lat, lon, h, NULL);
+  }
 
-    /** \name Inspector functions
+  /** \name Inspector functions
      **********************************************************************/
-    ///@{
-    /**
+  ///@{
+  /**
      * @return latitude of the origin (degrees).
      **********************************************************************/
-    Math::real LatitudeOrigin() const { return _lat0; }
+  Math::real LatitudeOrigin() const { return _lat0; }
 
-    /**
+  /**
      * @return longitude of the origin (degrees).
      **********************************************************************/
-    Math::real LongitudeOrigin() const { return _lon0; }
+  Math::real LongitudeOrigin() const { return _lon0; }
 
-    /**
+  /**
      * @return height of the origin (meters).
      **********************************************************************/
-    Math::real HeightOrigin() const { return _h0; }
+  Math::real HeightOrigin() const { return _h0; }
 
-    /**
+  /**
      * @return \e a the equatorial radius of the ellipsoid (meters).  This is
      *   the value of \e a inherited from the Geocentric object used in the
      *   constructor.
      **********************************************************************/
-    Math::real MajorRadius() const { return _earth.MajorRadius(); }
+  Math::real MajorRadius() const { return _earth.MajorRadius(); }
 
-    /**
+  /**
      * @return \e f the flattening of the ellipsoid.  This is the value
      *   inherited from the Geocentric object used in the constructor.
      **********************************************************************/
-    Math::real Flattening() const { return _earth.Flattening(); }
-    ///@}
-
-  };
+  Math::real Flattening() const { return _earth.Flattening(); }
+  ///@}
+};
 
 } // namespace GeographicLib
 
-#endif  // GEOGRAPHICLIB_LOCALCARTESIAN_HPP
+#endif // GEOGRAPHICLIB_LOCALCARTESIAN_HPP

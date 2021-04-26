@@ -18,7 +18,7 @@ FrontEnd::FrontEnd()
     :local_map_ptr_(new CloudData::CLOUD()),
      global_map_ptr_(new CloudData::CLOUD()),
      result_cloud_ptr_(new CloudData::CLOUD()) {
-    
+
     InitWithConfig();
 }
 
@@ -83,6 +83,8 @@ bool FrontEnd::InitRegistration(std::shared_ptr<RegistrationInterface>& registra
         registration_ptr = std::make_shared<ICPRegistration>(config_node[registration_method]);
     } else if (registration_method == "ICP_SVD") {
         registration_ptr = std::make_shared<ICPSVDRegistration>(config_node[registration_method]);
+    } else if (registration_method == "ICP_GN") {
+        registration_ptr = std::make_shared<ICPGNRegistration>(config_node[registration_method]);
     } else {
         LOG(ERROR) << "Point cloud registration method " << registration_method << " NOT FOUND!";
         return false;
@@ -137,7 +139,7 @@ bool FrontEnd::Update(const CloudData& cloud_data, Eigen::Matrix4f& cloud_pose) 
     last_pose = current_frame_.pose;
 
     // 匹配之后根据距离判断是否需要生成新的关键帧，如果需要，则做相应更新
-    if (fabs(last_key_frame_pose(0,3) - current_frame_.pose(0,3)) + 
+    if (fabs(last_key_frame_pose(0,3) - current_frame_.pose(0,3)) +
         fabs(last_key_frame_pose(1,3) - current_frame_.pose(1,3)) +
         fabs(last_key_frame_pose(2,3) - current_frame_.pose(2,3)) > key_frame_distance_) {
         UpdateWithNewFrame(current_frame_);
@@ -163,7 +165,7 @@ bool FrontEnd::UpdateWithNewFrame(const Frame& new_key_frame) {
     // 此时无论你放多少个关键帧在容器里，这些关键帧点云指针都是指向的同一个点云
     key_frame.cloud_data.cloud_ptr.reset(new CloudData::CLOUD(*new_key_frame.cloud_data.cloud_ptr));
     CloudData::CLOUD_PTR transformed_cloud_ptr(new CloudData::CLOUD());
-    
+
     // 更新局部地图
     local_map_frames_.push_back(key_frame);
     while (local_map_frames_.size() > static_cast<size_t>(local_frame_num_)) {
@@ -171,8 +173,8 @@ bool FrontEnd::UpdateWithNewFrame(const Frame& new_key_frame) {
     }
     local_map_ptr_.reset(new CloudData::CLOUD());
     for (size_t i = 0; i < local_map_frames_.size(); ++i) {
-        pcl::transformPointCloud(*local_map_frames_.at(i).cloud_data.cloud_ptr, 
-                                 *transformed_cloud_ptr, 
+        pcl::transformPointCloud(*local_map_frames_.at(i).cloud_data.cloud_ptr,
+                                 *transformed_cloud_ptr,
                                  local_map_frames_.at(i).pose);
         *local_map_ptr_ += *transformed_cloud_ptr;
     }
@@ -207,12 +209,12 @@ bool FrontEnd::SaveMap() {
         key_frame_path = data_path_ + "/key_frames/key_frame_" + std::to_string(i) + ".pcd";
         pcl::io::loadPCDFile(key_frame_path, *key_frame_cloud_ptr);
 
-        pcl::transformPointCloud(*key_frame_cloud_ptr, 
-                                *transformed_cloud_ptr, 
+        pcl::transformPointCloud(*key_frame_cloud_ptr,
+                                *transformed_cloud_ptr,
                                 global_map_frames_.at(i).pose);
         *global_map_ptr_ += *transformed_cloud_ptr;
     }
-    
+
     std::string map_file_path = data_path_ + "/map.pcd";
     pcl::io::savePCDFileBinary(map_file_path, *global_map_ptr_);
     has_new_global_map_ = true;
