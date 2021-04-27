@@ -58,7 +58,7 @@ bool FrontEnd::InitDataPath(const YAML::Node& config_node) {
         LOG(WARNING) << "Cannot create directory " << data_path_ << "!";
         return false;
     } else {
-        LOG(INFO) << "Point Cloud Map Output Path: " << data_path_;
+        LOG_EVERY_N(INFO,10) << "Point Cloud Map Output Path: " << data_path_;
     }
 
     std::string key_frame_path = data_path_ + "/key_frames";
@@ -67,7 +67,7 @@ bool FrontEnd::InitDataPath(const YAML::Node& config_node) {
         LOG(WARNING) << "Cannot create directory " << key_frame_path << "!";
         return false;
     } else {
-        LOG(INFO) << "Key Frames Output Path: " << key_frame_path << std::endl << std::endl;
+        LOG_EVERY_N(INFO,10) << "Key Frames Output Path: " << key_frame_path << std::endl << std::endl;
     }
 
     return true;
@@ -75,7 +75,7 @@ bool FrontEnd::InitDataPath(const YAML::Node& config_node) {
 
 bool FrontEnd::InitRegistration(std::shared_ptr<RegistrationInterface>& registration_ptr, const YAML::Node& config_node) {
     std::string registration_method = config_node["registration_method"].as<std::string>();
-    LOG(INFO) << "Point Cloud Registration Method: " << registration_method;
+    LOG_EVERY_N(INFO,10) << "Point Cloud Registration Method: " << registration_method;
 
     if (registration_method == "NDT") {
         registration_ptr = std::make_shared<NDTRegistration>(config_node[registration_method]);
@@ -95,7 +95,7 @@ bool FrontEnd::InitRegistration(std::shared_ptr<RegistrationInterface>& registra
 
 bool FrontEnd::InitFilter(std::string filter_user, std::shared_ptr<CloudFilterInterface>& filter_ptr, const YAML::Node& config_node) {
     std::string filter_mothod = config_node[filter_user + "_filter"].as<std::string>();
-    LOG(INFO) << filter_user << "Point Cloud Filter Method: " << filter_mothod;
+    LOG_EVERY_N(INFO,10) << filter_user << "Point Cloud Filter Method: " << filter_mothod;
 
     if (filter_mothod == "voxel_filter") {
         filter_ptr = std::make_shared<VoxelFilter>(config_node[filter_mothod][filter_user]);

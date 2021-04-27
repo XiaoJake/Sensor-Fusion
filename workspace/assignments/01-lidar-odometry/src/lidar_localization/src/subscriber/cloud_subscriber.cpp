@@ -15,17 +15,29 @@ CloudSubscriber::CloudSubscriber(ros::NodeHandle& nh, std::string topic_name, si
 }
 
 void CloudSubscriber::msg_callback(const sensor_msgs::PointCloud2::ConstPtr& cloud_msg_ptr) {
-    CloudData cloud_data;
-    cloud_data.time = cloud_msg_ptr->header.stamp.toSec();
-    pcl::fromROSMsg(*cloud_msg_ptr, *(cloud_data.cloud_ptr));
+    static unsigned int frames_count = 0;
+    static char hz_control = 2;
+    frames_count++;
 
-    new_cloud_data_.push_back(cloud_data);
+    if(frames_count%hz_control == 0)
+    {
+        CloudData cloud_data;
+        cloud_data.time = cloud_msg_ptr->header.stamp.toSec();
+        pcl::fromROSMsg(*cloud_msg_ptr, *(cloud_data.cloud_ptr));
+
+        new_cloud_data_.push_back(cloud_data);
+        //LOG_EVERY_N(INFO,10) << "got new pointclouds\n";
+    }
+
 }
 
-void CloudSubscriber::ParseData(std::deque<CloudData>& cloud_data_buff) {
+void CloudSubscriber::ParseData(std::deque<CloudData>& cloud_data_buff, double time_calibration) {
     if (new_cloud_data_.size() > 0) {
         cloud_data_buff.insert(cloud_data_buff.end(), new_cloud_data_.begin(), new_cloud_data_.end());
         new_cloud_data_.clear();
+
+        while(cloud_data_buff.front().time <= time_calibration && cloud_data_buff.size() > 1)
+            cloud_data_buff.pop_front();
     }
 }
 } // namespace data_input

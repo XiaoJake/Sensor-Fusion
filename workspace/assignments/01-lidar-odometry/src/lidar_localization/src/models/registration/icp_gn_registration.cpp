@@ -27,7 +27,7 @@ bool ICPGNRegistration::SetRegistrationParam(float max_correspond_dis, int max_i
 {
   max_correspond_distance_ = max_correspond_dis;
   max_iterator_ = max_iter;
-  LOG(INFO) << "ICP GN 的匹配参数为：" << std::endl
+  LOG_EVERY_N(INFO,10) << "ICP GN 的匹配参数为：" << std::endl
             << "max_correspond_dis: " << max_correspond_dis << ", "
             << "max_iter: " << max_iter << std::endl
             << std::endl;

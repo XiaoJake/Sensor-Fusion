@@ -33,10 +33,16 @@ void IMUSubscriber::msg_callback(const sensor_msgs::ImuConstPtr& imu_msg_ptr) {
     new_imu_data_.push_back(imu_data);
 }
 
-void IMUSubscriber::ParseData(std::deque<IMUData>& imu_data_buff) {
+void IMUSubscriber::ParseData(std::deque<IMUData>& imu_data_buff, double time_calibration) {
     if (new_imu_data_.size() > 0) {
         imu_data_buff.insert(imu_data_buff.end(), new_imu_data_.begin(), new_imu_data_.end());
         new_imu_data_.clear();
+
+        while(imu_data_buff.front().time <= time_calibration  && imu_data_buff.size() > 1 )
+        {
+            LOG(INFO) << time_calibration - imu_data_buff.front().time;
+            imu_data_buff.pop_front();
+        }
     }
 }
 }

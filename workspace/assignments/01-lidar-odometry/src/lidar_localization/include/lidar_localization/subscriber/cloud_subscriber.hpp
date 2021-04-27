@@ -22,7 +22,7 @@ class CloudSubscriber {
   public:
     CloudSubscriber(ros::NodeHandle& nh, std::string topic_name, size_t buff_size);
     CloudSubscriber() = default;
-    void ParseData(std::deque<CloudData>& deque_cloud_data);
+    void ParseData(std::deque<CloudData>& deque_cloud_data, double time_calibration);
 
   private:
     void msg_callback(const sensor_msgs::PointCloud2::ConstPtr& cloud_msg_ptr);

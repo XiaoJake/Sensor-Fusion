@@ -12,56 +12,57 @@
 
 namespace lidar_localization {
 FrontEndFlow::FrontEndFlow(ros::NodeHandle& nh) {
-    cloud_sub_ptr_ = std::make_shared<CloudSubscriber>(nh, "/kitti/velo/pointcloud", 100000);
-    imu_sub_ptr_ = std::make_shared<IMUSubscriber>(nh, "/kitti/oxts/imu", 1000000);
-    velocity_sub_ptr_ = std::make_shared<VelocitySubscriber>(nh, "/kitti/oxts/gps/vel", 1000000);
-    gnss_sub_ptr_ = std::make_shared<GNSSSubscriber>(nh, "/kitti/oxts/gps/fix", 1000000);
-    lidar_to_imu_ptr_ = std::make_shared<TFListener>(nh, "imu_link", "velo_link");
+    cloud_sub_ptr_ = std::make_shared<CloudSubscriber>(nh, "/kitti/velo/pointcloud", 50);
+    imu_sub_ptr_ = std::make_shared<IMUSubscriber>(nh, "/kitti/oxts/imu", 50);
+    velocity_sub_ptr_ = std::make_shared<VelocitySubscriber>(nh, "/kitti/oxts/gps/vel", 50);
+    gnss_sub_ptr_ = std::make_shared<GNSSSubscriber>(nh, "/kitti/oxts/gps/fix", 50);
+    lidar_to_imu_ptr_ = std::make_shared<TFListener>(nh, "imu_link", "laser_link");
 
-    cloud_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "current_scan", 100, "/map");
-    local_map_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "local_map", 100, "/map");
-    global_map_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "global_map", 100, "/map");
-    laser_odom_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "laser_odom", "map", "lidar", 100);
-    gnss_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "gnss", "map", "lidar", 100);
+    cloud_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "current_scan", 10, "/map");
+    local_map_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "local_map", 10, "/map");
+    global_map_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "global_map", 10, "/map");
+    laser_odom_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "laser_odom", "map", "lidar", 10);
+    gnss_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "gnss", "map", "lidar", 10);
 
     front_end_ptr_ = std::make_shared<FrontEnd>();
 
     local_map_ptr_.reset(new CloudData::CLOUD());
     global_map_ptr_.reset(new CloudData::CLOUD());
     current_scan_ptr_.reset(new CloudData::CLOUD());
+
+    use_reflector_ = true;
 }
 
 bool FrontEndFlow::Run() {
-    if (!ReadData()) {
-        // LOG(INFO) << "Failed to read data!" << std::endl;
-        return false;
-    }
-        
     if (!InitCalibration())  {
-        // LOG(INFO) << "Failed to init calibration!" << std::endl;
+        LOG_EVERY_N(INFO,10) << "Waiting for init calibration!\n";
         return false;
     }
 
+    if (!ReadData()) {
+        LOG_EVERY_N(INFO,10) << "Failed to read data!\n";
+        return false;
+    }
 
     if (!InitGNSS()) {
-        // LOG(INFO) << "Failed to init GNSS!" << std::endl;       
-        return false; 
+        LOG_EVERY_N(INFO,10) << "Failed to init GNSS!\n";
+        return false;
     }
 
     while(HasData()) {
         if (!ValidData()) {
-            // LOG(INFO) << "Invalid data!" << std::endl;
+            LOG_EVERY_N(INFO,500) << "Invalid data!\n";
             continue;
         }
-            
-        UpdateGNSSOdometry();
+
+        //UpdateGNSSOdometry();
         if (UpdateLaserOdometry()) {
             PublishData();
             SaveTrajectory();
 
-            LOG(INFO) << "Update LaserOdometry..." << std::endl;
+            //LOG_EVERY_N(INFO,10) << "Update LaserOdometry...\n";
         } else {
-            LOG(INFO) << "UpdateLaserOdometry failed!" << std::endl;
+            LOG_EVERY_N(INFO,10) << "UpdateLaserOdometry failed!\n";
         }
     }
 
@@ -69,36 +70,55 @@ bool FrontEndFlow::Run() {
 }
 
 bool FrontEndFlow::ReadData() {
-    cloud_sub_ptr_->ParseData(cloud_data_buff_);
+    cloud_sub_ptr_->ParseData(cloud_data_buff_, time_calibration_);
 
     static std::deque<IMUData> unsynced_imu_;
     static std::deque<VelocityData> unsynced_velocity_;
     static std::deque<GNSSData> unsynced_gnss_;
 
-    imu_sub_ptr_->ParseData(unsynced_imu_);
-    velocity_sub_ptr_->ParseData(unsynced_velocity_);
-    gnss_sub_ptr_->ParseData(unsynced_gnss_);
+    bool valid_velocity;
+    bool valid_gnss;
+
+    imu_sub_ptr_->ParseData(unsynced_imu_, time_calibration_);
+    if(!use_reflector_)
+    {
+        velocity_sub_ptr_->ParseData(unsynced_velocity_);
+        gnss_sub_ptr_->ParseData(unsynced_gnss_);
+    }
 
     if (cloud_data_buff_.size() == 0) {
-        // LOG(INFO) << "Waiting for laser scan..." << std::endl;
+        LOG_EVERY_N(INFO,10) << "Waiting for laser scan..." << std::endl;
         return false;
     }
-        
+
     double cloud_time = cloud_data_buff_.front().time;
     bool valid_imu = IMUData::SyncData(unsynced_imu_, imu_data_buff_, cloud_time);
-    bool valid_velocity = VelocityData::SyncData(unsynced_velocity_, velocity_data_buff_, cloud_time);
-    bool valid_gnss = GNSSData::SyncData(unsynced_gnss_, gnss_data_buff_, cloud_time);
+    if(!use_reflector_)
+    {
+        valid_velocity = VelocityData::SyncData(unsynced_velocity_, velocity_data_buff_, cloud_time);
+        valid_gnss = GNSSData::SyncData(unsynced_gnss_, gnss_data_buff_, cloud_time);
+    }
 
     static bool sensor_inited = false;
     if (!sensor_inited) {
-        if (!valid_imu || !valid_velocity || !valid_gnss) {
-            LOG(INFO) << "Validity check: " << std::endl
+        if(!use_reflector_)
+        {
+            if (!valid_imu || !valid_velocity || !valid_gnss) {
+            LOG_EVERY_N(INFO,10) << "Validity check: \n"
                       << "IMU: " << valid_imu << ", "
                       << "Velocity: " << valid_velocity << ", "
-                      << "GNSS: " << valid_gnss << std::endl;
+                      << "GNSS: " << valid_gnss << "\n";
+            cloud_data_buff_.pop_front();
+            return false;
+            }
+        }
+        else if (!valid_imu) {
+            LOG_EVERY_N(INFO,10) << "Validity check: \n"
+                    << "IMU: " << valid_imu << "\n";
             cloud_data_buff_.pop_front();
             return false;
         }
+
         sensor_inited = true;
     }
 
@@ -110,6 +130,8 @@ bool FrontEndFlow::InitCalibration() {
     if (!calibration_received) {
         if (lidar_to_imu_ptr_->LookupData(lidar_to_imu_)) {
             calibration_received = true;
+            time_calibration_ = ros::Time::now().toSec();
+            LOG_EVERY_N(INFO,10) << "OK! Succeed to init calibration!\n";
         }
     }
 
@@ -132,37 +154,57 @@ bool FrontEndFlow::HasData() {
         return false;
     if (imu_data_buff_.size() == 0)
         return false;
-    if (velocity_data_buff_.size() == 0)
-        return false;
-    if (gnss_data_buff_.size() == 0)
-        return false;
-    
+
+    if(!use_reflector_)
+    {
+        if (velocity_data_buff_.size() == 0)
+            return false;
+        if (gnss_data_buff_.size() == 0)
+            return false;
+    }
+
+    //LOG(INFO) << "points size:= " << cloud_data_buff_.size();
+    //LOG(INFO) << "has data...";
     return true;
 }
 
 bool FrontEndFlow::ValidData() {
     current_cloud_data_ = cloud_data_buff_.front();
     current_imu_data_ = imu_data_buff_.front();
-    current_velocity_data_ = velocity_data_buff_.front();
-    current_gnss_data_ = gnss_data_buff_.front();
+
+    if(!use_reflector_)
+    {
+        current_velocity_data_ = velocity_data_buff_.front();
+        current_gnss_data_ = gnss_data_buff_.front();
+    }
+
 
     double d_time = current_cloud_data_.time - current_imu_data_.time;
     if (d_time < -0.05) {
         cloud_data_buff_.pop_front();
+        LOG_EVERY_N(INFO,1) << "d_time too little\n";
         return false;
     }
 
     if (d_time > 0.05) {
         imu_data_buff_.pop_front();
-        velocity_data_buff_.pop_front();
-        gnss_data_buff_.pop_front();
+        if(!use_reflector_)
+        {
+            velocity_data_buff_.pop_front();
+            gnss_data_buff_.pop_front();
+        }
+        LOG_EVERY_N(INFO,1) << "d_time too big\n";
+
         return false;
     }
 
     cloud_data_buff_.pop_front();
     imu_data_buff_.pop_front();
-    velocity_data_buff_.pop_front();
-    gnss_data_buff_.pop_front();
+    if(!use_reflector_)
+    {
+        velocity_data_buff_.pop_front();
+        gnss_data_buff_.pop_front();
+    }
 
     return true;
 }
@@ -184,7 +226,11 @@ bool FrontEndFlow::UpdateLaserOdometry() {
     static bool front_end_pose_inited = false;
     if (!front_end_pose_inited) {
         front_end_pose_inited = true;
-        front_end_ptr_->SetInitPose(gnss_odometry_);
+        if(!use_reflector_)
+            front_end_ptr_->SetInitPose(gnss_odometry_);
+        else
+            front_end_ptr_->SetInitPose(Eigen::Matrix4f::Identity());
+
         return front_end_ptr_->Update(current_cloud_data_, laser_odometry_);
     }
 
@@ -204,6 +250,7 @@ bool FrontEndFlow::PublishData() {
 
     return true;
 }
+
 
 bool FrontEndFlow::SaveTrajectory() {
     static std::ofstream ground_truth, laser_odom;
@@ -240,7 +287,7 @@ bool FrontEndFlow::SaveMap() {
 }
 
 bool FrontEndFlow::PublishGlobalMap() {
-    if (front_end_ptr_->GetNewGlobalMap(global_map_ptr_)) { 
+    if (front_end_ptr_->GetNewGlobalMap(global_map_ptr_)) {
         global_map_pub_ptr_->Publish(global_map_ptr_);
         global_map_ptr_.reset(new CloudData::CLOUD());
     }

@@ -11,7 +11,7 @@ namespace lidar_localization {
 
 NDTRegistration::NDTRegistration(const YAML::Node& node)
     :ndt_ptr_(new pcl::NormalDistributionsTransform<CloudData::POINT, CloudData::POINT>()) {
-    
+
     float res = node["res"].as<float>();
     float step_size = node["step_size"].as<float>();
     float trans_eps = node["trans_eps"].as<float>();
@@ -32,11 +32,11 @@ bool NDTRegistration::SetRegistrationParam(float res, float step_size, float tra
     ndt_ptr_->setTransformationEpsilon(trans_eps);
     ndt_ptr_->setMaximumIterations(max_iter);
 
-    LOG(INFO) << "NDT params:" << std::endl
+    LOG_EVERY_N(INFO,10) << "NDT params:" << std::endl
               << "res: " << res << ", "
               << "step_size: " << step_size << ", "
               << "trans_eps: " << trans_eps << ", "
-              << "max_iter: " << max_iter 
+              << "max_iter: " << max_iter
               << std::endl << std::endl;
 
     return true;
@@ -48,8 +48,8 @@ bool NDTRegistration::SetInputTarget(const CloudData::CLOUD_PTR& input_target) {
     return true;
 }
 
-bool NDTRegistration::ScanMatch(const CloudData::CLOUD_PTR& input_source, 
-                                const Eigen::Matrix4f& predict_pose, 
+bool NDTRegistration::ScanMatch(const CloudData::CLOUD_PTR& input_source,
+                                const Eigen::Matrix4f& predict_pose,
                                 CloudData::CLOUD_PTR& result_cloud_ptr,
                                 Eigen::Matrix4f& result_pose) {
     ndt_ptr_->setInputSource(input_source);

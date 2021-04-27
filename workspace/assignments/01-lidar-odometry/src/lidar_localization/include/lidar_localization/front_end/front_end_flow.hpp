@@ -65,6 +65,9 @@ class FrontEndFlow {
     CloudData::CLOUD_PTR current_scan_ptr_;
     Eigen::Matrix4f gnss_odometry_ = Eigen::Matrix4f::Identity();
     Eigen::Matrix4f laser_odometry_ = Eigen::Matrix4f::Identity();
+
+    bool use_reflector_;
+    double time_calibration_;
 };
 }
 
