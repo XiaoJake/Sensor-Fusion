@@ -32,6 +32,7 @@ class FrontEndFlow {
     bool InitGNSS();
     bool HasData();
     bool ValidData();
+    bool UpdateReflectorOdometry();
     bool UpdateGNSSOdometry();
     bool UpdateLaserOdometry();
     bool PublishData();
@@ -44,6 +45,7 @@ class FrontEndFlow {
     std::shared_ptr<GNSSSubscriber> gnss_sub_ptr_;
     std::shared_ptr<TFListener> lidar_to_imu_ptr_;
     std::shared_ptr<CloudPublisher> cloud_pub_ptr_;
+    std::shared_ptr<CloudPublisher> reflector_pub_ptr;
     std::shared_ptr<CloudPublisher> local_map_pub_ptr_;
     std::shared_ptr<CloudPublisher> global_map_pub_ptr_;
     std::shared_ptr<OdometryPublisher> laser_odom_pub_ptr_;
@@ -55,6 +57,7 @@ class FrontEndFlow {
     std::deque<VelocityData> velocity_data_buff_;
     std::deque<GNSSData> gnss_data_buff_;
     Eigen::Matrix4f lidar_to_imu_ = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f lidar_to_base_ = Eigen::Matrix4f::Identity();
     CloudData current_cloud_data_;
     IMUData current_imu_data_;
     VelocityData current_velocity_data_;
@@ -63,6 +66,8 @@ class FrontEndFlow {
     CloudData::CLOUD_PTR local_map_ptr_;
     CloudData::CLOUD_PTR global_map_ptr_;
     CloudData::CLOUD_PTR current_scan_ptr_;
+    CloudData::CLOUD_PTR current_reflector_ptr;
+    Eigen::Matrix4f reflector_odometry_ = Eigen::Matrix4f::Identity();
     Eigen::Matrix4f gnss_odometry_ = Eigen::Matrix4f::Identity();
     Eigen::Matrix4f laser_odometry_ = Eigen::Matrix4f::Identity();
 

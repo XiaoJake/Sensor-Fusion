@@ -24,6 +24,7 @@ void CloudSubscriber::msg_callback(const sensor_msgs::PointCloud2::ConstPtr& clo
         CloudData cloud_data;
         cloud_data.time = cloud_msg_ptr->header.stamp.toSec();
         pcl::fromROSMsg(*cloud_msg_ptr, *(cloud_data.cloud_ptr));
+        pcl::fromROSMsg(*cloud_msg_ptr, *(cloud_data.cloudi_ptr));
 
         new_cloud_data_.push_back(cloud_data);
         //LOG_EVERY_N(INFO,10) << "got new pointclouds\n";
@@ -36,6 +37,7 @@ void CloudSubscriber::ParseData(std::deque<CloudData>& cloud_data_buff, double t
         cloud_data_buff.insert(cloud_data_buff.end(), new_cloud_data_.begin(), new_cloud_data_.end());
         new_cloud_data_.clear();
 
+        // 把系统等待校准外参这段时间内接收的数据都 丢掉,只取收到校准外参后开始的数据
         while(cloud_data_buff.front().time <= time_calibration && cloud_data_buff.size() > 1)
             cloud_data_buff.pop_front();
     }

@@ -19,6 +19,7 @@ FrontEndFlow::FrontEndFlow(ros::NodeHandle& nh) {
     lidar_to_imu_ptr_ = std::make_shared<TFListener>(nh, "imu_link", "laser_link");
 
     cloud_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "current_scan", 10, "/map");
+    reflector_pub_ptr = std::make_shared<CloudPublisher>(nh, "reflector", 10, "/map");
     local_map_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "local_map", 10, "/map");
     global_map_pub_ptr_ = std::make_shared<CloudPublisher>(nh, "global_map", 10, "/map");
     laser_odom_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "laser_odom", "map", "lidar", 10);
@@ -29,6 +30,7 @@ FrontEndFlow::FrontEndFlow(ros::NodeHandle& nh) {
     local_map_ptr_.reset(new CloudData::CLOUD());
     global_map_ptr_.reset(new CloudData::CLOUD());
     current_scan_ptr_.reset(new CloudData::CLOUD());
+    current_reflector_ptr.reset(new CloudData::CLOUD());
 
     use_reflector_ = true;
 }
@@ -39,13 +41,14 @@ bool FrontEndFlow::Run() {
         return false;
     }
 
+    if(!use_reflector_)
+        if (!InitGNSS()) {
+            LOG_EVERY_N(INFO,10) << "Failed to init GNSS!\n";
+            return false;
+        }
+
     if (!ReadData()) {
         LOG_EVERY_N(INFO,10) << "Failed to read data!\n";
-        return false;
-    }
-
-    if (!InitGNSS()) {
-        LOG_EVERY_N(INFO,10) << "Failed to init GNSS!\n";
         return false;
     }
 
@@ -56,10 +59,10 @@ bool FrontEndFlow::Run() {
         }
 
         //UpdateGNSSOdometry();
+        UpdateReflectorOdometry();
         if (UpdateLaserOdometry()) {
             PublishData();
             SaveTrajectory();
-
             //LOG_EVERY_N(INFO,10) << "Update LaserOdometry...\n";
         } else {
             LOG_EVERY_N(INFO,10) << "UpdateLaserOdometry failed!\n";
@@ -70,6 +73,7 @@ bool FrontEndFlow::Run() {
 }
 
 bool FrontEndFlow::ReadData() {
+    //缓存点云数据
     cloud_sub_ptr_->ParseData(cloud_data_buff_, time_calibration_);
 
     static std::deque<IMUData> unsynced_imu_;
@@ -79,6 +83,7 @@ bool FrontEndFlow::ReadData() {
     bool valid_velocity;
     bool valid_gnss;
 
+    //缓存imu数据(未时间同步)
     imu_sub_ptr_->ParseData(unsynced_imu_, time_calibration_);
     if(!use_reflector_)
     {
@@ -91,6 +96,7 @@ bool FrontEndFlow::ReadData() {
         return false;
     }
 
+    // 将imu数据以点云数据时间戳为基准做 线性插值的时间同步
     double cloud_time = cloud_data_buff_.front().time;
     bool valid_imu = IMUData::SyncData(unsynced_imu_, imu_data_buff_, cloud_time);
     if(!use_reflector_)
@@ -114,7 +120,7 @@ bool FrontEndFlow::ReadData() {
         }
         else if (!valid_imu) {
             LOG_EVERY_N(INFO,10) << "Validity check: \n"
-                    << "IMU: " << valid_imu << "\n";
+                                 << "IMU: " << valid_imu << "\n";
             cloud_data_buff_.pop_front();
             return false;
         }
@@ -171,7 +177,6 @@ bool FrontEndFlow::HasData() {
 bool FrontEndFlow::ValidData() {
     current_cloud_data_ = cloud_data_buff_.front();
     current_imu_data_ = imu_data_buff_.front();
-
     if(!use_reflector_)
     {
         current_velocity_data_ = velocity_data_buff_.front();
@@ -182,7 +187,7 @@ bool FrontEndFlow::ValidData() {
     double d_time = current_cloud_data_.time - current_imu_data_.time;
     if (d_time < -0.05) {
         cloud_data_buff_.pop_front();
-        LOG_EVERY_N(INFO,1) << "d_time too little\n";
+        LOG_EVERY_N(INFO,1) << "Points too old\n";
         return false;
     }
 
@@ -193,8 +198,7 @@ bool FrontEndFlow::ValidData() {
             velocity_data_buff_.pop_front();
             gnss_data_buff_.pop_front();
         }
-        LOG_EVERY_N(INFO,1) << "d_time too big\n";
-
+        LOG_EVERY_N(INFO,1) << "Other sensor's data too old\n";
         return false;
     }
 
@@ -209,9 +213,12 @@ bool FrontEndFlow::ValidData() {
     return true;
 }
 
-bool FrontEndFlow::UpdateGNSSOdometry() {
-    gnss_odometry_ = Eigen::Matrix4f::Identity();
+bool UpdateReflectorOdometry(){
+    reflector_odometry_ = ;
+    return true;
+}
 
+bool FrontEndFlow::UpdateGNSSOdometry() {
     current_gnss_data_.UpdateXYZ();
     gnss_odometry_(0,3) = current_gnss_data_.local_E;
     gnss_odometry_(1,3) = current_gnss_data_.local_N;
@@ -243,7 +250,9 @@ bool FrontEndFlow::PublishData() {
     laser_odom_pub_ptr_->Publish(laser_odometry_);
 
     front_end_ptr_->GetCurrentScan(current_scan_ptr_);
+    front_end_ptr_->GetCurrentReflector(current_reflector_ptr);
     cloud_pub_ptr_->Publish(current_scan_ptr_);
+    reflector_pub_ptr->Publish(current_reflector_ptr);
 
     if (front_end_ptr_->GetNewLocalMap(local_map_ptr_))
         local_map_pub_ptr_->Publish(local_map_ptr_);

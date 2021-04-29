@@ -16,6 +16,7 @@ class VoxelFilter: public CloudFilterInterface {
     VoxelFilter(float leaf_size_x, float leaf_size_y, float leaf_size_z);
 
     bool Filter(const CloudData::CLOUD_PTR& input_cloud_ptr, CloudData::CLOUD_PTR& filtered_cloud_ptr) override;
+    bool Show(const CloudData::CLOUD_PTR& input_cloud_ptr, CloudData::CLOUD_PTR& filtered_cloud_ptr) override;
 
   private:
     bool SetFilterParam(float leaf_size_x, float leaf_size_y, float leaf_size_z);

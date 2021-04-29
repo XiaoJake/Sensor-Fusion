@@ -22,9 +22,9 @@ ICP:
     euc_fitness_eps : 0.01
     max_iter : 30
 NDT:
-    res : 0.5
-    step_size : 0.05
-    trans_eps : 0.01
+    res : 1.6
+    step_size : 0.16
+    trans_eps : 0.02
     max_iter : 30
 ICP_SVD:
     max_corr_dist : 1.2
@@ -39,6 +39,6 @@ voxel_filter:
     local_map:
         leaf_size: [0.1, 0.1, 0.1]
     frame:
-        leaf_size: [0.25, 0.25, 0.25]
+        leaf_size: [0.2, 0.2, 0.2]
     display:
-        leaf_size: [0.25, 0.25, 0.25]
+        leaf_size: [0.2, 0.2, 0.2]

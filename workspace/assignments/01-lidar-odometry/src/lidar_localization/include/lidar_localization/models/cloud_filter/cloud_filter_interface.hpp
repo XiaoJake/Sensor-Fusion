@@ -15,6 +15,7 @@ class CloudFilterInterface {
     virtual ~CloudFilterInterface() = default;
 
     virtual bool Filter(const CloudData::CLOUD_PTR& input_cloud_ptr, CloudData::CLOUD_PTR& filtered_cloud_ptr) = 0;
+    virtual bool Show(const CloudData::CLOUD_PTR& input_cloud_ptr, CloudData::CLOUD_PTR& filtered_cloud_ptr) = 0;
 };
 }
 

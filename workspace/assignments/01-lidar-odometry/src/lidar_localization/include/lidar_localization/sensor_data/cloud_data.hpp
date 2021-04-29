@@ -16,14 +16,20 @@ class CloudData {
     using CLOUD = pcl::PointCloud<POINT>;
     using CLOUD_PTR = CLOUD::Ptr;
 
+    using POINTI = pcl::PointXYZI;
+    using CLOUDI = pcl::PointCloud<POINTI>;
+    using CLOUDI_PTR = CLOUDI::Ptr;
+    using POINT_POSE = std::vector<Eigen::Vector2f>;
+
   public:
     CloudData()
-      :cloud_ptr(new CLOUD()) {
+      :cloud_ptr(new CLOUD()), cloudi_ptr(new CLOUDI()) {
     }
 
   public:
     double time = 0.0;
     CLOUD_PTR cloud_ptr;
+    CLOUDI_PTR cloudi_ptr;
 };
 }
 

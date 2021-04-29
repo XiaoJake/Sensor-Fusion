@@ -19,23 +19,31 @@ Eigen::Matrix3f IMUData::GetOrientationMatrix() {
 bool IMUData::SyncData(std::deque<IMUData>& UnsyncedData, std::deque<IMUData>& SyncedData, double sync_time) {
     // 传感器数据按时间序列排列，在传感器数据中为同步的时间点找到合适的时间位置
     // 即找到与同步时间相邻的左右两个数据
-    // 需要注意的是，如果左右相邻数据有一个离同步时间差值比较大，则说明数据有丢失，时间离得太远不适合做差值
+    // 需要注意的是，如果左右相邻数据有一个离同步时间差值比较大，则说明数据有丢失，时间离得太远不适合做插值
+    // 时间索引：把雷达采集时刻在其他传感器的时间线里找到对应的位置，然后找到该位置前后两帧的数据
     while (UnsyncedData.size() >= 2) {
         // UnsyncedData.front().time should be <= sync_time:
-        if (UnsyncedData.front().time > sync_time) 
+        // 如果第一个数据时间比雷达时间还要靠后，即插入时刻的前面没有数据，那么就无从插入，直接退出
+        if (UnsyncedData.front().time > sync_time)
             return false;
+
         // sync_time should be <= UnsyncedData.at(1).time:
+        // 如果第一个(序号为0)数据比插入时刻早，第二个(序号为1)数据也比插入时刻早，那么第一个时刻的数据是没意义的，应该接着往下找，并删除第一个数据
         if (UnsyncedData.at(1).time < sync_time) {
             UnsyncedData.pop_front();
             continue;
         }
 
         // sync_time - UnsyncedData.front().time should be <= 0.2:
+        // 通过了前两个if判断，到这里说明雷达采集时刻已经处在前两个数据的中间。
+        // 还需判断此时的第一个数据时刻与雷达采集时刻时间差是否过大，若过大则中间肯定丢数据了，退出
         if (sync_time - UnsyncedData.front().time > 0.2) {
             UnsyncedData.pop_front();
             return false;
         }
         // UnsyncedData.at(1).time - sync_time should be <= 0.2
+        // 同样，如果第二个数据时刻与雷达采集时刻时间差过大，那么也是丢数据了，也退出。
+        // 但这个数据不要删除,因为它在下一帧雷达采集时刻的前面。
         if (UnsyncedData.at(1).time - sync_time > 0.2) {
             return false;
         }
@@ -48,6 +56,7 @@ bool IMUData::SyncData(std::deque<IMUData>& UnsyncedData, std::deque<IMUData>& S
     IMUData back_data = UnsyncedData.at(1);
     IMUData synced_data;
 
+    // 采用线性插值,以完成时间同步 y=[(x1-x)/(x1-x0)]*y0 + [(x-x0)/(x1-x0)]*y1
     double front_scale = (back_data.time - sync_time) / (back_data.time - front_data.time);
     double back_scale = (sync_time - front_data.time) / (back_data.time - front_data.time);
     synced_data.time = sync_time;

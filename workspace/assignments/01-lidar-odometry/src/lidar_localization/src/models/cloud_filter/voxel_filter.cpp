@@ -39,4 +39,11 @@ bool VoxelFilter::Filter(const CloudData::CLOUD_PTR& input_cloud_ptr, CloudData:
 
     return true;
 }
+
+bool VoxelFilter::Show(const CloudData::CLOUD_PTR& input_cloud_ptr, CloudData::CLOUD_PTR& filtered_cloud_ptr) {
+    *filtered_cloud_ptr = *input_cloud_ptr;
+
+    return true;
+}
+
 }

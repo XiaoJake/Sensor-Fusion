@@ -15,6 +15,20 @@
 #include <pcl/registration/icp.h>
 #include <pcl/registration/ndt.h>
 
+#include <pcl/common/transforms.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+
 #include <yaml-cpp/yaml.h>
 
 #include "lidar_localization/sensor_data/cloud_data.hpp"
@@ -27,6 +41,7 @@
 #include "lidar_localization/models/registration/icp_gn_registration.hpp"
 
 namespace lidar_localization {
+
 class FrontEnd {
   public:
     struct Frame {
@@ -39,12 +54,14 @@ class FrontEnd {
 
     bool InitWithConfig();
     bool Update(const CloudData& cloud_data, Eigen::Matrix4f& cloud_pose);
+    bool UpdateReflectorLoc(CloudData::CLOUDI_PTR points_raw, Eigen::Matrix4f& reflector_pose);
     bool SetInitPose(const Eigen::Matrix4f& init_pose);
 
     bool SaveMap();
     bool GetNewLocalMap(CloudData::CLOUD_PTR& local_map_ptr);
     bool GetNewGlobalMap(CloudData::CLOUD_PTR& global_map_ptr);
     bool GetCurrentScan(CloudData::CLOUD_PTR& current_scan_ptr);
+    bool GetCurrentReflector(CloudData::CLOUD_PTR& current_reflector_ptr);
 
   private:
     bool InitParam(const YAML::Node& config_node);
@@ -69,6 +86,8 @@ class FrontEnd {
     CloudData::CLOUD_PTR local_map_ptr_;
     CloudData::CLOUD_PTR global_map_ptr_;
     CloudData::CLOUD_PTR result_cloud_ptr_;
+    CloudData::CLOUD_PTR result_reflector_ptr_;
+
     Frame current_frame_;
 
     Eigen::Matrix4f init_pose_ = Eigen::Matrix4f::Identity();

@@ -17,7 +17,8 @@ namespace lidar_localization {
 FrontEnd::FrontEnd()
     :local_map_ptr_(new CloudData::CLOUD()),
      global_map_ptr_(new CloudData::CLOUD()),
-     result_cloud_ptr_(new CloudData::CLOUD()) {
+     result_cloud_ptr_(new CloudData::CLOUD()),
+     result_reflector_ptr_(new CloudData::CLOUD()) {
 
     InitWithConfig();
 }
@@ -107,11 +108,97 @@ bool FrontEnd::InitFilter(std::string filter_user, std::shared_ptr<CloudFilterIn
     return true;
 }
 
+bool FrontEnd::UpdateReflectorLoc(CloudData::CLOUDI_PTR points_raw, Eigen::Matrix4f& reflector_pose) {
+    CloudData::CLOUDI_PTR reflector_points_i(new CloudData::CLOUDI);
+    CloudData::CLOUD::Ptr reflector_points(new CloudData::CLOUD);
+    CloudData::POINT_POSE centers;
+    msg_reflector;
+
+    auto point_transformed_to_base_link = [&](const Eigen::Vector2f& p) -> Eigen::Vector2f{
+        const float x = p.x() * std::cos(lidar_to_base_.z()) - p.y() * std::sin(lidar_to_base_.z()) + lidar_to_base_.x();
+        const float y = p.x() * std::sin(lidar_to_base_.z()) + p.y() * std::cos(lidar_to_base_.z()) + lidar_to_base_.y();
+        return Eigen::Vector2f(x,y);
+    };
+
+    for(int i = 0; i < points_raw->points.size(); i++)
+    {
+        if(points_raw->at(i).intensity > intensity_min_)
+        {
+            reflector_points_i->points.push_back(points_raw->at(i));
+        }
+    }
+
+    pcl::copyPointCloud(*reflector_points_i , *reflector_points);
+
+    // 离群点剔除
+    // 1)统计滤波法
+    pcl::StatisticalOutlierRemoval<CloudData::CLOUD> sor;
+    sor.setInputCloud(reflector_points);
+    sor.setMeanK(30);//临近点
+    sor.setStddevMulThresh(0.5);//距离大于1倍标准方差，值越大，丢掉的点越少
+    sor.filter(*result_reflector_ptr_);
+
+    // 2)半径滤波法
+    // pcl::RadiusOutlierRemoval<CloudData::CLOUD> outrem;
+    // outrem.setInputCloud(reflector_points);
+    // outrem.setRadiusSearch(0.3);
+    // outrem.setMinNeighborsInRadius(4);
+    // outrem.filter(*result_reflector_ptr_);
+
+    // 取反，获取被剔除的离群点
+    // sor.setNegative(true);
+    // sor.filter(*cloud_filtered);
+
+    // 通过聚类，提取出反光板点云块
+    // 创建一个Kd树对象作为提取点云时所用的方法，
+    pcl::search::KdTree<CloudData::CLOUD>::Ptr tree(new pcl::search::KdTree<CloudData::CLOUD>);
+    tree->setInputCloud (result_reflector_ptr_);//创建点云索引向量，用于存储实际的点云信息
+    std::vector<pcl::PointIndices> cluster_indices;
+    pcl::EuclideanClusterExtraction<CloudData::CLOUD> ec;//欧式聚类对象
+    ec.setClusterTolerance(0.2); //设置近邻搜索的搜索半径(m)
+    ec.setMinClusterSize(4);//设置一个聚类需要的最少点数目
+    ec.setMaxClusterSize(160); //设置一个聚类需要的最大点数目
+    ec.setSearchMethod(tree);//设置点云的搜索机制
+    ec.setInputCloud(result_reflector_ptr_);
+    ec.extract(cluster_indices);//从点云中提取聚类，并将 聚类后的点云块索引 保存在cluster_indices中
+
+    //迭代访问点云索引cluster_indices，直到分割出所有聚类出的反光板点云
+    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+    {
+        CloudData::CLOUD_PTR cloud_cluster (new CloudData::CLOUD);
+        for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+            cloud_cluster->points.push_back(result_reflector_ptr_->points[*pit]);
+
+        cloud_cluster->width = cloud_cluster->points.size ();
+        cloud_cluster->height = 1;
+        cloud_cluster->is_dense = true;
+        cloud_cluster->header = result_reflector_ptr_->header;
+        cloud_cluster->sensor_orientation_ = result_reflector_ptr_->sensor_orientation_;
+        cloud_cluster->sensor_origin_ = result_reflector_ptr_->sensor_origin_;
+
+        std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+
+        // PCL函数计算质心
+        Eigen::Vector4f centroid;// 质量m默认为1 (x,y,z,1)
+        pcl::compute3DCentroid(*cloud_cluster, centroid);	// 计算当前质心
+        Eigen::Vector2f now_point{centroid(0),centroid(1)};
+        centers.push_back(point_transformed_to_base_link(now_point));
+    }
+
+    if(centers.empty())
+        return false;
+    // 输出检测到的反光板个数
+    std::cout << "\n detected " << centers.size() << " reflectors\n";
+    return true;
+}
+
+
 bool FrontEnd::Update(const CloudData& cloud_data, Eigen::Matrix4f& cloud_pose) {
     current_frame_.cloud_data.time = cloud_data.time;
     std::vector<int> indices;
     pcl::removeNaNFromPointCloud(*cloud_data.cloud_ptr, *current_frame_.cloud_data.cloud_ptr, indices);
 
+    // 对当前帧的点云进行体素滤波,完成下采样,减少匹配时的数据量
     CloudData::CLOUD_PTR filtered_cloud_ptr(new CloudData::CLOUD());
     frame_filter_ptr_->Filter(current_frame_.cloud_data.cloud_ptr, filtered_cloud_ptr);
 
@@ -123,7 +210,7 @@ bool FrontEnd::Update(const CloudData& cloud_data, Eigen::Matrix4f& cloud_pose) 
     // 局部地图容器中没有关键帧，代表是第一帧数据
     // 此时把当前帧数据作为第一个关键帧，并更新局部地图容器和全局地图容器
     if (local_map_frames_.size() == 0) {
-        current_frame_.pose = init_pose_;
+        current_frame_.pose = init_pose_;// 完成第一帧点云的 位姿初始化
         UpdateWithNewFrame(current_frame_);
         cloud_pose = current_frame_.pose;
         return true;
@@ -131,18 +218,24 @@ bool FrontEnd::Update(const CloudData& cloud_data, Eigen::Matrix4f& cloud_pose) 
 
     // 不是第一帧，就正常匹配
     registration_ptr_->ScanMatch(filtered_cloud_ptr, predict_pose, result_cloud_ptr_, current_frame_.pose);
-    cloud_pose = current_frame_.pose;
+    //假定机器人只在水平面运动,只保留yaw角的转动
+    current_frame_.pose(0,2) = 0;current_frame_.pose(1,2) = 0;current_frame_.pose(2,2) = 1;
+    current_frame_.pose(2,0) = 0;current_frame_.pose(2,1) = 0;
+    //将z固定在水平面
+    current_frame_.pose(2,3) = 0;
 
-    // 更新相邻两帧的相对运动
-    step_pose = last_pose.inverse() * current_frame_.pose;
-    predict_pose = current_frame_.pose * step_pose;
+    cloud_pose = current_frame_.pose;//匹配后的位姿就是 当前帧的位姿
+
+    // 更新相邻两帧的相对运动。采用匀速运动模型进行位姿预测:上一帧到当前帧的移动位姿=当前帧到下一阵的移动位姿
+    step_pose = last_pose.inverse() * current_frame_.pose;// 当前帧位姿变换矩阵 左乘 上一时刻位姿的逆 = 相对于上一时刻的移动步长
+    predict_pose = current_frame_.pose * step_pose;// 当前帧位姿变换矩阵 右乘 移动步长 = 预测的下一帧位姿
     last_pose = current_frame_.pose;
 
     // 匹配之后根据距离判断是否需要生成新的关键帧，如果需要，则做相应更新
     if (fabs(last_key_frame_pose(0,3) - current_frame_.pose(0,3)) +
         fabs(last_key_frame_pose(1,3) - current_frame_.pose(1,3)) +
         fabs(last_key_frame_pose(2,3) - current_frame_.pose(2,3)) > key_frame_distance_) {
-        UpdateWithNewFrame(current_frame_);
+        UpdateWithNewFrame(current_frame_);// 大于设定的生成关键帧的距离时,将当前帧作为关键帧存入,通过这些关键帧来拼接我们的 局部地图
         last_key_frame_pose = current_frame_.pose;
     }
 
@@ -166,27 +259,33 @@ bool FrontEnd::UpdateWithNewFrame(const Frame& new_key_frame) {
     key_frame.cloud_data.cloud_ptr.reset(new CloudData::CLOUD(*new_key_frame.cloud_data.cloud_ptr));
     CloudData::CLOUD_PTR transformed_cloud_ptr(new CloudData::CLOUD());
 
-    // 更新局部地图
+    // 更新局部地图:如果此时局部地图中的 数量大于了 定义的最大局部地图存储数量local_frame_num_,
+    // 就把最早的 局部地图弹出,让最新的一帧进来,这就是所谓的 滑窗
     local_map_frames_.push_back(key_frame);
     while (local_map_frames_.size() > static_cast<size_t>(local_frame_num_)) {
         local_map_frames_.pop_front();
     }
+
     local_map_ptr_.reset(new CloudData::CLOUD());
-    for (size_t i = 0; i < local_map_frames_.size(); ++i) {
+    for (size_t i = 0; i < local_map_frames_.size(); ++i) {//遍历滑窗
+        // 点云位姿变换 参数：源点云，变换后的点云，变换矩阵(取自当前关键帧)
         pcl::transformPointCloud(*local_map_frames_.at(i).cloud_data.cloud_ptr,
                                  *transformed_cloud_ptr,
                                  local_map_frames_.at(i).pose);
-        *local_map_ptr_ += *transformed_cloud_ptr;
+
+        *local_map_ptr_ += *transformed_cloud_ptr;// 将做好位姿变换的局部地图帧 存储到局部地图容器里
     }
     has_new_local_map_ = true;
 
     // 更新ndt匹配的目标点云
     // 关键帧数量还比较少的时候不滤波，因为点云本来就不多，太稀疏影响匹配效果
-    if (local_map_frames_.size() < 10) {
+    if (local_map_frames_.size() < local_frame_num_) {
         registration_ptr_->SetInputTarget(local_map_ptr_);
     } else {
         CloudData::CLOUD_PTR filtered_local_map_ptr(new CloudData::CLOUD());
-        local_map_filter_ptr_->Filter(local_map_ptr_, filtered_local_map_ptr);
+        local_map_filter_ptr_->Filter(local_map_ptr_, filtered_local_map_ptr);// 对局部地图也进行体素滤波,降低数据量
+        // 设定NDT匹配中的 目标点云
+        // registration_ptr_->ScanMatch就是把当前帧点云往这个 目标点云上匹配，得出的转换矩阵就需要求得的 位姿
         registration_ptr_->SetInputTarget(filtered_local_map_ptr);
     }
 
@@ -242,6 +341,11 @@ bool FrontEnd::GetNewGlobalMap(CloudData::CLOUD_PTR& global_map_ptr) {
 
 bool FrontEnd::GetCurrentScan(CloudData::CLOUD_PTR& current_scan_ptr) {
     display_filter_ptr_->Filter(result_cloud_ptr_, current_scan_ptr);
+    return true;
+}
+
+bool FrontEnd::GetCurrentReflector(CloudData::CLOUD_PTR& current_reflector_ptr) {
+    display_filter_ptr_->Show(result_reflector_ptr_, current_reflector_ptr);
     return true;
 }
 }

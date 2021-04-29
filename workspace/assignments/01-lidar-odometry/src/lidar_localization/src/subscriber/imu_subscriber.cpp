@@ -40,7 +40,7 @@ void IMUSubscriber::ParseData(std::deque<IMUData>& imu_data_buff, double time_ca
 
         while(imu_data_buff.front().time <= time_calibration  && imu_data_buff.size() > 1 )
         {
-            LOG(INFO) << time_calibration - imu_data_buff.front().time;
+            //LOG(INFO) << time_calibration - imu_data_buff.front().time;
             imu_data_buff.pop_front();
         }
     }
