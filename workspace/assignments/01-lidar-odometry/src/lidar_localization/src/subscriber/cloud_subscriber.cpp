@@ -15,6 +15,7 @@ CloudSubscriber::CloudSubscriber(ros::NodeHandle& nh, std::string topic_name, si
 }
 
 void CloudSubscriber::msg_callback(const sensor_msgs::PointCloud2::ConstPtr& cloud_msg_ptr) {
+    buff_mutex_.lock();
     static unsigned int frames_count = 0;
     static char hz_control = 2;
     frames_count++;
@@ -29,10 +30,12 @@ void CloudSubscriber::msg_callback(const sensor_msgs::PointCloud2::ConstPtr& clo
         new_cloud_data_.push_back(cloud_data);
         //LOG_EVERY_N(INFO,10) << "got new pointclouds\n";
     }
-
+    buff_mutex_.unlock();
 }
 
 void CloudSubscriber::ParseData(std::deque<CloudData>& cloud_data_buff, double time_calibration) {
+    buff_mutex_.lock();
+
     if (new_cloud_data_.size() > 0) {
         cloud_data_buff.insert(cloud_data_buff.end(), new_cloud_data_.begin(), new_cloud_data_.end());
         new_cloud_data_.clear();
@@ -41,5 +44,7 @@ void CloudSubscriber::ParseData(std::deque<CloudData>& cloud_data_buff, double t
         while(cloud_data_buff.front().time <= time_calibration && cloud_data_buff.size() > 1)
             cloud_data_buff.pop_front();
     }
+
+    buff_mutex_.unlock();
 }
 } // namespace data_input

@@ -62,4 +62,8 @@ bool NDTRegistration::ScanMatch(const CloudData::CLOUD_PTR& input_source,
 
     return true;
 }
+
+float NDTRegistration::GetFitnessScore() {
+    return ndt_ptr_->getFitnessScore();
+}
 }

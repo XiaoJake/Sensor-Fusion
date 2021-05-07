@@ -16,11 +16,12 @@ class NDTRegistration: public RegistrationInterface {
     NDTRegistration(float res, float step_size, float trans_eps, int max_iter);
 
     bool SetInputTarget(const CloudData::CLOUD_PTR& input_target) override;
-    bool ScanMatch(const CloudData::CLOUD_PTR& input_source, 
-                   const Eigen::Matrix4f& predict_pose, 
+    bool ScanMatch(const CloudData::CLOUD_PTR& input_source,
+                   const Eigen::Matrix4f& predict_pose,
                    CloudData::CLOUD_PTR& result_cloud_ptr,
                    Eigen::Matrix4f& result_pose) override;
-  
+    float GetFitnessScore() override;
+
   private:
     bool SetRegistrationParam(float res, float step_size, float trans_eps, int max_iter);
 

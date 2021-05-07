@@ -6,12 +6,11 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /CurrentScan1/Autocompute Value Bounds1
-        - /laser_odom1/Shape1
+        - /wheel_odom1/Shape1
         - /global_map1/Autocompute Value Bounds1
-        - /local_map1
         - /gnss1/Shape1
         - /gnss1/Covariance1
+        - /reflector_points1
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -32,7 +31,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: CurrentScan
+    SyncSource: local_map
 Toolbars:
   toolButtonStyle: 2
 Visualization Manager:
@@ -56,36 +55,6 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 4.77899981
-        Min Value: -9.57400036
-        Value: false
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: Intensity
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 255
-      Min Color: 0; 0; 0
-      Min Intensity: 7
-      Name: CurrentScan
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 4
-      Size (m): 0.400000006
-      Style: Points
-      Topic: /current_scan
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
     - Angle Tolerance: 0.25
       Class: rviz/Odometry
       Covariance:
@@ -105,7 +74,7 @@ Visualization Manager:
         Value: true
       Enabled: true
       Keep: 10000000
-      Name: laser_odom
+      Name: wheel_odom
       Position Tolerance: 0.100000001
       Shape:
         Alpha: 1
@@ -117,7 +86,7 @@ Visualization Manager:
         Shaft Length: 0.100000001
         Shaft Radius: 0.0125000002
         Value: Arrow
-      Topic: /laser_odom
+      Topic: /odom
       Unreliable: false
       Value: true
     - Class: rviz/Image
@@ -226,6 +195,116 @@ Visualization Manager:
       Topic: /gnss
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 4.77899981
+        Min Value: -9.57400036
+        Value: false
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: Intensity
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 255
+      Min Color: 0; 0; 0
+      Min Intensity: 7
+      Name: CurrentScan
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 4
+      Size (m): 0.400000006
+      Style: Points
+      Topic: /current_scan
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 0; 0
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 0; 0
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: reflector_points
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.0250000004
+      Style: Flat Squares
+      Topic: /reflector_points
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.300000012
+      Head Length: 0.200000003
+      Length: 0.300000012
+      Line Style: Lines
+      Line Width: 0.0299999993
+      Name: front_end_path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.0299999993
+      Shaft Diameter: 0.100000001
+      Shaft Length: 0.100000001
+      Topic: /front_end_path
+      Unreliable: false
+      Value: true
+    - Class: rviz/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        base_link:
+          Value: true
+        imu_link:
+          Value: true
+        laser_link:
+          Value: true
+        map:
+          Value: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        map:
+          base_link:
+            imu_link:
+              {}
+            laser_link:
+              {}
+      Update Interval: 0
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -250,7 +329,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.51499999
+      Angle: -1.48000002
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
@@ -260,11 +339,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 35.1781654
-      Target Frame: base_link
+      Scale: 36.5391273
+      Target Frame: map
       Value: TopDownOrtho (rviz)
-      X: 10.6251764
-      Y: -1.2587111
+      X: 9.44308281
+      Y: 7.4927659
     Saved: ~
 Window Geometry:
   Displays:

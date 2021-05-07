@@ -23,10 +23,13 @@
                            --topics $(arg odom) $(arg imu) $(arg points) $(arg tf)" />
 
     <node name="base_laser_tf" pkg="tf" type="static_transform_publisher"
-          args="0.02786 0.0 0.58110 0.00 0 0 imu_link laser_link 1000"/>
+          args="0.13686 0.0 0.58110 0.00 0 0 base_link laser_link 1000"/>
+
+    <node name="base_imu_tf" pkg="tf" type="static_transform_publisher"
+          args="0.109 0.0 0.0 0.0 0 0 base_link imu_link 1000"/>
 
     <group if = "$(arg rviz)">
-        <node pkg="rviz" type="rviz" name="rviz" output="screen" required="true"
+        <node pkg="rviz" type="rviz" name="rviz" output="screen" required="false"
             args="-d $(find lidar_localization)/rviz/front_end.rviz"/>
     </group>
 
